@@ -1,0 +1,12 @@
+{
+  email local-dev@example.com
+  local_certs
+}
+
+crm.localhost {
+  reverse_proxy gateway:80
+}
+
+fundraising.localhost {
+  reverse_proxy gateway:80
+}

@@ -149,9 +149,26 @@ services:
     restart: always
     networks: [dev-net]
 
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      gateway:
+        condition: service_healthy
+    restart: always
+    networks: [dev-net]
+
 volumes:
   db-data:
   server-local-data:
+  caddy-data:
+  caddy-config:
 
 networks:
   dev-net:
