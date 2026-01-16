@@ -1,42 +1,48 @@
 # Pilot Plan (Learning-First, Low Regret)
 
-Purpose: run a realistic dummy pilot for Twenty + fundraising extension while deferring VPS until the stack and runbooks are stable.
+Purpose: run a realistic pilot for Twenty + fundraising extension while deferring VPS until the stack and runbooks are stable.
 
 ## Phases
 
-### Phase 1 — Local production mimic (short)
-- Reverse proxy + HTTPS locally.
+### Phase 1 — Local production mimic (completed, optional)
 - `SERVER_URL` set as if public.
-- Decide storage strategy (S3-compatible) and validate locally.
+- Validate storage strategy (S3-compatible) locally if needed.
 - Configure pilot org, metadata, and sample data.
 - Run a restore drill after meaningful data exists.
 
-### Phase 2 — Hosted middle ground (Railway or similar)
-- Deploy full multi-service stack (Twenty, worker, db, redis, gateway, fundraising, caddy).
-- Use real HTTPS + public URL.
-- Use S3-compatible storage (R2/S3).
+### Phase 2 — Hosted middle ground (Railway)
+- Deploy full multi-service stack (Twenty, worker, db, redis, gateway, fundraising, n8n).
+- Use Railway TLS termination + nginx gateway.
+- Use S3-compatible storage (R2 default, AWS S3 supported).
 - Validate webhooks and multi-user access.
-- Evaluate Twenty multi-workspace mode (`IS_MULTIWORKSPACE_ENABLED`) for multi-tenant partner hosting (requires wildcard DNS).
+- Keep multi-workspace disabled; document env vars + wildcard DNS requirements for Phase 3.
+- Enable backups (Railway automated backups with 14-day retention).
+- Execution steps: `docs/pilot/PHASE_2_EXECUTION.md`.
 
 #### Phase 2 checklist (Railway)
-- Services: `server`, `worker`, Railway Postgres, Railway Redis, `gateway`, `fundraising-service` (n8n optional).
-- Storage: `STORAGE_TYPE=s3` + S3/R2 credentials (no local volumes).
+- Services: `server`, `worker`, Railway Postgres, Railway Redis, `gateway`, `fundraising-service`, `n8n`.
+- Storage: `STORAGE_TYPE=s3` + S3-compatible credentials (R2 default, S3 optional). Keep buckets private.
 - Public URL: set `SERVER_URL` to the Railway HTTPS domain (or custom domain).
-- Fundraising auth: decide and implement before public exposure (proxy guard or service-level JWT verification).
+- Fundraising auth: test token propagation and UI gating before public exposure.
+- n8n: use `automations.<domain>` with strong auth, persistent storage, and `N8N_ENCRYPTION_KEY`.
+- Gateway: build nginx from `nginx/Dockerfile` (no file mounts).
+- Backups: enable Railway daily automated backups (14-day retention). Run a monthly restore drill into a fresh env and verify login + sample records.
 - Metadata provisioning: run `setup-schema.mjs` against the hosted URL.
-- Smoke tests: `smoke:gifts`, manual gift → staging → process, file upload (S3 validation).
+- Smoke tests: `smoke:gifts`, manual gift → staging → process, file upload (S3-compatible validation).
 
 ### Phase 3 — VPS self-hosting (later)
 - Deploy via Docker Compose or Coolify/EasyPanel.
+- Enable and test multi-workspace with wildcard DNS + `{DEFAULT_SUBDOMAIN}`.
 - Full ops posture: backups, upgrades, monitoring, rollback.
 - Document partner-friendly self-hosting steps.
 
 ## Decisions (current)
-- Storage: move to S3-compatible storage (MinIO locally, S3/R2 later).
+- Storage: S3-compatible storage with R2 as default; keep buckets private.
 - Integration: fundraising-service talks to Twenty via REST API only.
-- Hosting: VPS deferred until Phase 2 stabilizes.
+- Data plane: API-first is the default posture.
+- Hosting: Phase 2 on Railway; Phase 3 VPS.
 
 ## Open Questions
-- Exact cloud provider choice for Phase 2 (Railway vs alternatives).
-- n8n hosting strategy and webhook patterns for Phase 2.
-- Final backup/restore cadence and ownership.
+- Which connector goes live first in n8n (Stripe vs other).
+- Timeline for Phase 3 multi-workspace rollout.
+- When to plan direct-to-storage uploads (presigned URLs).
