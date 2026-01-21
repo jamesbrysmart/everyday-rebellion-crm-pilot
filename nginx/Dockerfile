@@ -1,3 +1,5 @@
 FROM nginx:alpine
 
-COPY gateway.conf /etc/nginx/conf.d/default.conf
+# Render config from env at container start (PaaS + VPS + Compose friendly).
+# nginx official image auto-renders /etc/nginx/templates/*.template via envsubst.
+COPY default.conf.template /etc/nginx/templates/default.conf.template
