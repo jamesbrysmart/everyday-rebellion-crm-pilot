@@ -62,6 +62,11 @@ Service names should match nginx upstreams in `nginx/gateway.conf`.
 - `TWENTY_API_BASE_URL=http://server:3000/rest`
 - `TWENTY_API_KEY=<set after bootstrap>`
 
+### gateway
+- `NGINX_RESOLVER=fd12::10`
+- `FUNDRAISING_UPSTREAM=${{fundraising-service.RAILWAY_PRIVATE_DOMAIN}}:4500`
+- `TWENTY_UPSTREAM=server.railway.internal:3000`
+
 ### n8n
 - `N8N_HOST=automations.<domain>`
 - `N8N_PROTOCOL=https`
@@ -90,7 +95,25 @@ Service names should match nginx upstreams in `nginx/gateway.conf`.
 
 ## 7) Provision metadata
 
-Run the metadata script locally or via a Railway one-off command:
+### Recommended (Railway-first, less error-prone)
+
+Set these **service variables** on `fundraising-service` (once):
+- `TWENTY_METADATA_BASE_URL=http://${{server.RAILWAY_PRIVATE_DOMAIN}}:3000/rest/metadata`
+- `TWENTY_METADATA_GRAPHQL_URL=http://${{server.RAILWAY_PRIVATE_DOMAIN}}:3000/metadata`
+
+Then run the script inside the deployed container (so it uses private networking and avoids leaking local `.env` values to your terminal):
+
+```bash
+railway ssh -s fundraising-service -- node scripts/setup-schema.mjs
+```
+
+Notes:
+- The script is safe to re-run (it skips existing objects/fields). If you hit transient network errors (e.g. `socket hang up`), rerun it.
+- Enable extra diagnostics with `SETUP_SCHEMA_DEBUG=true` (avoid pasting logs publicly; rotate keys if you accidentally share secrets).
+
+### Alternative (local)
+
+Run the metadata script locally (ensure your `TWENTY_API_KEY` is set in the environment; avoid printing secrets in shared terminals):
 
 ```bash
 cd services/fundraising-service
@@ -105,6 +128,11 @@ node scripts/setup-schema.mjs
 ```bash
 cd services/fundraising-service
 GATEWAY_BASE=https://crm.<domain> npm run smoke:gifts
+```
+
+Railway alternative (runs inside the deployed container over private networking):
+```bash
+railway ssh -s fundraising-service -- sh -lc 'GATEWAY_BASE=http://gateway.railway.internal SMOKE_AUTH_TOKEN="$TWENTY_API_KEY" node scripts/smoke-gifts.mjs'
 ```
 
 Confirm a gift is created in Twenty and the staging flow works end-to-end.
